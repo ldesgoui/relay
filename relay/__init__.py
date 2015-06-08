@@ -128,7 +128,7 @@ class Relay(object):
 
         while 42:
             for line in data:
-                line = line.strip().decode()
+                line = line.strip()
                 if not line:
                     continue
                 self.logger.debug("Recv: {message}".format(message=line))
@@ -137,13 +137,12 @@ class Relay(object):
                     if result is None:
                         continue
                     args, kwargs = result
-                    kwargs = 
                     for handler in handlers:
-                        try:
-                            for out in handler(*args, state=self.state[handler], **kwargs):
-                                send(out.format(*args, **kwargs))
-                        except TypeError:
-                            pass
+                        outs = handler(*args, state=self.state[handler], **kwargs)
+                        if outs is None:
+                            continue
+                        for out in outs:
+                            send(out.format(*args, **kwargs))
 
 
 def _register(route):
