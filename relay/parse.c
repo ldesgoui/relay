@@ -17,7 +17,7 @@ charspan(const char *str, const char c)
 {
 	const char	cs[] = {c, '\0'};
 
-	return (strcspn(str, cs));
+	return strcspn(str, cs);
 }
 
 static char *
@@ -37,10 +37,10 @@ match(const char *pattern, const char *data,
 		{
 			k = charspan(&pattern[i], '}');
 			if (pattern[i + k] != '}')
-				return ("end of string while looking for pattern thingie");
+				return "end of string while looking for end of qualifier";
 			v = charspan(&data[x], pattern[i + k + 1]);
 			if (data[x + v] != pattern[i + k + 1])
-				return ("end of string while matching");
+				return "end of string while matching";
 			if (k == 1)
 				PyList_Append(results, Py_BuildValue("s#", &data[x], v));
 			else
@@ -55,8 +55,8 @@ match(const char *pattern, const char *data,
 		++i; ++x;
 	}
 	if (pattern[i] != data[x])
-		return ("mis-match in values");
-	return (NULL);
+		return "mis-match in values";
+	return NULL;
 }
 
 
@@ -75,7 +75,7 @@ parse_match(PyObject *self, PyObject *args)
 
 	if (!PyArg_ParseTuple(args, "ss", &pattern, &data))
 	{
-		PyErr_SetString(PyExc_TypeError, "Arguments must be strings");
+		PyErr_SetString(PyExc_TypeError, "arguments must be 2 strings");
 		return NULL;
 	}
 	results = PyList_New(0);

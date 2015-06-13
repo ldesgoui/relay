@@ -6,19 +6,21 @@ logging.basicConfig(level=logging.DEBUG)
 from relay import Relay, auto_join, auto_pong
 from relay.constants import privmsg
 
-bot = Relay(__name__)
+bot = Relay("echobot")
 
 @bot.handler(privmsg)
 def echo(target, message, sender, *args, **kwargs):
     if not message.startswith("!echo "):
         return
-    sender = sender.split('@')[0].split('!')[0]
-    message = message[6:]
+    sender_nick = sender.split('@')[0].split('!')[0] # We just want the nick
+    message = message[6:] # We just want whatever is after '!echo '
     if target == bot.client['nick']:
-        yield "PRIVMSG {sender} :{sender}: {message}".format(sender=sender, message=message)
+        result = "PRIVMSG {sender_nick} :{sender_nick}: {message}"
     else:
-        yield "PRIVMSG {{target}} :{sender}: {message}".format(sender=sender, message=message)
+        result = "PRIVMSG {{target}} :{sender_nick}: {message}"
+    yield result.format(sender_nick=sender_nick, message=message)
 
 if __name__ == "__main__":
     bot.register(auto_pong)
+    bot.register(auto_join(['#tests'])
     bot.config(from_env=True).run()

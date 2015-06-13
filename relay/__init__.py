@@ -118,6 +118,8 @@ class Relay(object):
             sock.send(("{message}\r\n".format(message=message)).encode())
             self.logger.debug("Send: {message}".format(message=message))
 
+        self.send = send
+
         send("NICK {nick}".format(**self.client))
         user = self.client.get('user', None) or self.client['nick']
         send("USER {0} {0} {0} :{0}".format(user))
@@ -139,9 +141,7 @@ class Relay(object):
                         continue
                     for handler in handlers:
                         outs = handler(*args, state=self.state[handler], **kwargs)
-                        if outs is None:
-                            continue
-                        for out in outs:
+                        for out in outs or []:
                             send(out.format(*args, **kwargs))
 
 
