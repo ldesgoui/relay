@@ -22,5 +22,5 @@ def echo(target, message, sender, *args, **kwargs):
 
 if __name__ == "__main__":
     bot.register(auto_pong)
-    bot.register(auto_join(['#tests'])
+    bot.register(auto_join(['#tests']))
     bot.config(from_env=True).run()
