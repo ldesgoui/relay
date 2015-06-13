@@ -11,7 +11,7 @@ parse = Extension('relay.parse', sources=['relay/parse.c'])
 
 setup(name="relay-framework",
 
-      version="0.1.1",
+      version="0.2.0",
 
       description="Relay is an irc micro-framework "
                   "that smells too much like a web framework",
@@ -24,6 +24,7 @@ setup(name="relay-framework",
               "Development Status :: 3 - Alpha",
               "Topic :: Communications :: Chat :: Internet Relay Chat",
               "License :: OSI Approved :: MIT License",
+              "Programming Language :: Python :: 2.7",
               "Programming Language :: Python :: 3.4",
       ],
 
