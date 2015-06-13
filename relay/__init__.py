@@ -133,10 +133,10 @@ class Relay(object):
                     continue
                 self.logger.debug("Recv: {message}".format(message=line))
                 for route, handlers in self.handlers.items():
-                    result = parse.match(route, line)
-                    if result is None:
+                    try:
+                        args, kwargs = parse.match(route, line)
+                    except ValueError:
                         continue
-                    args, kwargs = result
                     for handler in handlers:
                         outs = handler(*args, state=self.state[handler], **kwargs)
                         if outs is None:

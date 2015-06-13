@@ -1,11 +1,6 @@
 from setuptools import setup, Extension, find_packages
 from codecs import open
 from os import path
-import sys
-
-if not sys.version_info[0] == 3:
-    print("Sorry, only Python 3 is supported for now")
-    sys.exit(1)
 
 here = path.abspath(path.dirname(__file__))
 

@@ -12,13 +12,57 @@
 
 #include <Python.h>
 
-static int
-match(const char *pattern, const char *data,
-		PyObject *results, PyObject *mapped_results);
+static size_t
+charspan(const char *str, const char c)
+{
+	const char	cs[] = {c, '\0'};
 
-static const char *parse_match_docstring =
+	return (strcspn(str, cs));
+}
+
+static char *
+match(const char *pattern, const char *data,
+		PyObject *results, PyObject *mapped_results)
+{
+	Py_ssize_t		i, x, k, v;
+
+	i = 0; x = 0;
+	while (pattern[i] && data[x])
+	{
+		if (pattern[i] == '{' && pattern[i + 1] == '{')
+			++i;
+		else if (pattern[i] == '}' && pattern[i + 1] == '}')
+			++i;
+		else if (pattern[i] == '{')
+		{
+			k = charspan(&pattern[i], '}');
+			if (pattern[i + k] != '}')
+				return ("end of string while looking for pattern thingie");
+			v = charspan(&data[x], pattern[i + k + 1]);
+			if (data[x + v] != pattern[i + k + 1])
+				return ("end of string while matching");
+			if (k == 1)
+				PyList_Append(results, Py_BuildValue("s#", &data[x], v));
+			else
+				PyDict_SetItem(mapped_results,
+						Py_BuildValue("s#", &pattern[i + 1], k - 1),
+						Py_BuildValue("s#", &data[x], v));
+			i += k;
+			x += v - 1;
+		}
+		else if (pattern[i] != data[x])
+			break ;
+		++i; ++x;
+	}
+	if (pattern[i] != data[x])
+		return ("mis-match in values");
+	return (NULL);
+}
+
+
+static const char parse_match_docstring[] =
 "Match the pattern from the first argument with the data from the second "
-"argument, both being strings. Returns a tuple of a list and a tuple."
+"argument, both being strings. Returns tuple(tuple, dictionary).";
 
 static PyObject *
 parse_match(PyObject *self, PyObject *args)
@@ -27,101 +71,25 @@ parse_match(PyObject *self, PyObject *args)
 	const char		*data;
 	PyObject		*results;
 	PyObject		*mapped_results;
+	const char		*error;
 
 	if (!PyArg_ParseTuple(args, "ss", &pattern, &data))
 	{
 		PyErr_SetString(PyExc_TypeError, "Arguments must be strings");
-		return Py_None;
+		return NULL;
 	}
 	results = PyList_New(0);
 	mapped_results = PyDict_New();
-	if (match(pattern, data, results, mapped_results) != 0)
+	error = match(pattern, data, results, mapped_results);
+	if (error)
 	{
-		PyErr_SetString(PyExc_ValueError, "Parsing went wrong");
 		// TODO: what happens in the case of an exception when both objects are initialized ?
 		// Do they leak?
-		return Py_None;
+		PyErr_SetString(PyExc_ValueError, error);
+		return NULL;
 	}
 	return Py_BuildValue("(OO)", PyList_AsTuple(results), mapped_results);
 	// TODO: would the AsTuple leak the original results ?
-}
-
-/*! Match:
-**! {name:format}
-**!
-**! Working:
-**! "hello {target}!" "hello world!" -> () {'target': 'world'}
-**! "hey {}" "hey :)" -> (":)") {}
-**!
-**! To be added:
-**! ":{sender:@'{nick}@{host}'} PRIVMSG {target} :{message}"  ":sup@example.com PRIVMSG #chan :sup"
-**! -> () {'sender': {'data': 'sup@example.com', 'nick': 'sup', 'host': 'example.com'}, 'target': '#chan', 'message': 'sup'}
-*/
-static int
-match(const char *pattern, const char *data,
-		PyObject *results, PyObject *mapped_results)
-{
-	int i;
-	int x;
-	const char *key;
-	int keylen;
-	const char *value;
-	int valuelen;
-
-	i = 0;
-	x = 0;
-	while (pattern[i] && data[x])
-	{
-		if (pattern[i] == '{')
-		{
-			if (pattern[i + 1] == '}')
-			{
-				key = NULL;
-				keylen = 1;
-			}
-			else
-			{
-				key = &pattern[i + 1];
-				keylen = 0;
-				while (key[keylen] != '}')
-				{
-					if (key[keylen] == '\0')
-					{
-						return (1);
-					}
-					keylen++;
-				}
-			}
-			i += keylen + 2;
-			value = &data[x];
-			valuelen = 0;
-			while (value[valuelen] != pattern[i])
-			{
-				if (value[valuelen] == '\0')
-				{
-					return (1);
-				}
-				valuelen++;
-			}
-			x += valuelen;
-			if (key == NULL)
-			{
-				PyList_Append(results, Py_BuildValue("s#", value, valuelen));
-			}
-			else
-			{
-				PyDict_SetItem(mapped_results, Py_BuildValue("s#", key, keylen),
-						Py_BuildValue("s#", value, valuelen));
-			}
-		}
-		else if (pattern[i] != data[x])
-		{
-			return (1);
-		}
-		i++;
-		x++;
-	}
-	return (0);
 }
 
 
@@ -129,7 +97,7 @@ match(const char *pattern, const char *data,
 ** Module Initialization
 */
 
-static const char *parse_module_docstring =
+static const char parse_module_docstring[] =
 "Relay.parse\n"
 "~~~~~~~~~~~\n\n"
 "This is a C extension due to the fact that I have more experience"
@@ -139,10 +107,11 @@ static const char *parse_module_docstring =
 "See LICENSE for more informations.";
 
 static PyMethodDef parse_methods[] = {
-	{"match", parse_match, METH_VARARGS, parse_match_docstring,},
+	{"match", parse_match, METH_VARARGS, parse_match_docstring},
 	{NULL, NULL, 0, NULL}
 };
 
+#if PY_MAJOR_VERSION >= 3
 static struct PyModuleDef parse_module = {
 	PyModuleDef_HEAD_INIT,
 	"parse",
@@ -154,5 +123,12 @@ static struct PyModuleDef parse_module = {
 PyMODINIT_FUNC
 PyInit_parse(void)
 {
-	return PyModule_Create(&parsemodule);
+	return PyModule_Create(&parse_module);
 }
+#else
+PyMODINIT_FUNC
+initparse(void)
+{
+	Py_InitModule3("parse", parse_methods, parse_module_docstring);
+}
+#endif
