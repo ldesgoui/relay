@@ -160,11 +160,12 @@ def auto_pong(*args, **kwargs):
 
 def auto_join(channels):
     @_register(Relay.DEFAULT_ROUTE)
-    def auto_join_closure(*args, command=None, arguments="", **kwargs):
+    def auto_join_closure(*args, **kwargs):
         """ always re-join channels {} """.format(channels)
+        command = kwargs['command']
         if command == '376':
             yield "JOIN {}".format(", ".join(channels))
-        args = arguments.split(' ')
+        args = kwargs['arguments'].split(' ')
         if command == 'KICK' and self.config['nick'] in args[1]:
             yield "JOIN {}".format(args[0])
     return auto_join_closure
